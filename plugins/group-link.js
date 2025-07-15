@@ -1,49 +1,58 @@
-const { cmd, commands } = require('../command');
+const { cmd } = require('../command');
 const config = require('../config');
-const prefix = config.PREFIX;
 const fs = require('fs');
-const { getBuffer, getGroupAdmins, getRandom, h2k, isUrl, Json, sleep, fetchJson } = require('../lib/functions2');
-const { writeFileSync } = require('fs');
-const path = require('path');
+const { getGroupAdmins } = require('../lib/functions2');
 
 cmd({
     pattern: "invite",
     alias: ["glink", "grouplink"],
     desc: "Get group invite link.",
-    category: "group", // Already group
+    category: "group",
     filename: __filename,
-}, async (conn, mek, m, { from, quoted, body, args, q, isGroup, sender, reply }) => {
+}, async (conn, mek, m, { from, isGroup, sender, reply }) => {
     try {
-        // Ensure this is being used in a group
-        if (!isGroup) return reply("𝐓𝐡𝐢𝐬 𝐅𝐞𝐚𝐭𝐮𝐫𝐞 𝐈𝐬 𝐎𝐧𝐥𝐲 𝐅𝐨𝐫 𝐆𝐫𝐨𝐮𝐩❗");
+        if (!isGroup) return reply("❌ This command can only be used in groups.");
 
-        // Get the sender's number
-        const senderNumber = sender.split('@')[0];
-        const botNumber = conn.user.id.split(':')[0];
-        
-        // Check if the bot is an admin
-        const groupMetadata = isGroup ? await conn.groupMetadata(from) : '';
-        const groupAdmins = groupMetadata ? groupMetadata.participants.filter(member => member.admin) : [];
-        const isBotAdmins = isGroup ? groupAdmins.some(admin => admin.id === botNumber + '@s.whatsapp.net') : false;
-        
-        if (!isBotAdmins) return reply("𝐏𝐥𝐞𝐚𝐬𝐞 𝐏𝐫𝐨𝐯𝐢𝐝𝐞 𝐌𝐞 𝐀𝐝𝐦𝐢𝐧 𝐑𝐨𝐥𝐞 ❗");
+        const botNumber = conn.user.id.split(':')[0] + "@s.whatsapp.net";
+        const senderNumber = sender;
 
-        // Check if the sender is an admin
-        const isAdmins = isGroup ? groupAdmins.some(admin => admin.id === sender) : false;
-        if (!isAdmins) return reply("𝐏𝐥𝐞𝐚𝐬𝐞 𝐏𝐫𝐨𝐯𝐢𝐝𝐞 𝐌𝐞 𝐀𝐝𝐦𝐢𝐧 𝐑𝐨𝐥𝐞 ❗");
+        const metadata = await conn.groupMetadata(from);
+        const admins = metadata.participants.filter(p => p.admin).map(p => p.id);
+        const isBotAdmin = admins.includes(botNumber);
+        const isSenderAdmin = admins.includes(senderNumber);
 
-        // Get the invite code and generate the link
+        if (!isBotAdmin) return reply("❌ I need to be an admin to get the group invite link.");
+        if (!isSenderAdmin) return reply("❌ Only group admins can use this command.");
+
         const inviteCode = await conn.groupInviteCode(from);
-        if (!inviteCode) return reply("Failed to retrieve the invite code.");
+        if (!inviteCode) return reply("❌ Failed to generate group invite link.");
 
+        const groupName = metadata.subject || "Group";
         const inviteLink = `https://chat.whatsapp.com/${inviteCode}`;
 
-        // Reply with the invite link
-        return reply(`*Here is your group invite link:*\n${inviteLink}`);
-        
+        const box = `┏━━━━━━━━━━━━━━━━━━
+┃ 📩 *Group Invite Link*
+┃ 📛 *Group:* ${groupName}
+┃ 🔗 *Link:* ${inviteLink}
+┗━━━━━━━━━━━━━━━━━`;
+
+        await conn.sendMessage(from, {
+            text: box,
+            mentions: [m.sender],
+            contextInfo: {
+                forwardingScore: 999,
+                isForwarded: true,
+                mentionedJid: [m.sender],
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: "120363382023564830@newsletter",
+                    newsletterName: "𝗡𝗢𝗩𝗔-𝗫𝗠𝗗",
+                    serverMessageId: 1
+                }
+            }
+        }, { quoted: mek });
+
     } catch (error) {
         console.error("Error in invite command:", error);
-        reply(`An error occurred: ${error.message || "Unknown error"}`);
+        reply("⚠️ An error occurred while generating the invite link.");
     }
 });
-

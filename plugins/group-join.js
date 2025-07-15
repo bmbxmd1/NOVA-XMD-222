@@ -1,6 +1,6 @@
-const config = require('../config')
-const { cmd, commands } = require('../command')
-const { getBuffer, getGroupAdmins, getRandom, h2k, isUrl, Json, runtime, sleep, fetchJson } = require('../lib/functions')
+const config = require('../config');
+const { cmd, commands } = require('../command');
+const { isUrl } = require('../lib/functions');
 
 cmd({
     pattern: "join",
@@ -8,39 +8,55 @@ cmd({
     alias: ["joinme", "f_join"],
     desc: "To Join a Group from Invite link",
     category: "group",
-    use: '.join < Group Link >',
+    use: '.join <group link>',
     filename: __filename
-}, async (conn, mek, m, { from, l, quoted, body, isCmd, command, args, q, isGroup, sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isCreator, isDev, isAdmins, reply }) => {
+}, async (conn, mek, m, {
+    from, quoted, q, isCreator, reply
+}) => {
     try {
         const msr = {
-            own_cmd: "You don't have permission to use this command."
+            own_cmd: "❌ *Only my creator can use this command.*"
         };
 
-        // Only allow the creator to use the command
         if (!isCreator) return reply(msr.own_cmd);
 
-        // If there's no input, check if the message is a reply with a link
-        if (!q && !quoted) return reply("*Please write the Group Link*️ 🖇️");
+        if (!q && !quoted) return reply("📎 *Please provide a valid WhatsApp group link.*");
 
         let groupLink;
 
-        // If the message is a reply to a group invite link
         if (quoted && quoted.type === 'conversation' && isUrl(quoted.text)) {
             groupLink = quoted.text.split('https://chat.whatsapp.com/')[1];
         } else if (q && isUrl(q)) {
-            // If the user provided the link in the command
             groupLink = q.split('https://chat.whatsapp.com/')[1];
         }
 
-        if (!groupLink) return reply("❌ *Invalid Group Link* 🖇️");
+        if (!groupLink) return reply("❌ *Invalid Group Link.*");
 
-        // Accept the group invite
         await conn.groupAcceptInvite(groupLink);
-        await conn.sendMessage(from, { text: `✔️ *Successfully Joined*` }, { quoted: mek });
+
+        const box =
+`┏━━━━━━━━━━━━━━━━━━
+┃ ✅ *Successfully Joined Group!*
+┃ 👤 *Requested by:* @${m.sender.split("@")[0]}
+┃ 🔗 *Invite Code:* ${groupLink}
+┗━━━━━━━━━━━━━━━━━`;
+
+        await conn.sendMessage(from, {
+            text: box,
+            contextInfo: {
+                mentionedJid: [m.sender],
+                forwardingScore: 999,
+                isForwarded: true,
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: "120363382023564830@newsletter",
+                    newsletterName: "𝙽𝙾𝚅𝙰-𝚇𝙼𝙳",
+                    serverMessageId: 1
+                }
+            }
+        }, { quoted: mek });
 
     } catch (e) {
-        await conn.sendMessage(from, { react: { text: '❌', key: mek.key } });
-        console.log(e);
-        reply(`❌ *Error Occurred!!*\n\n${e}`);
+        console.error("Join Command Error:", e);
+        reply(`❌ *An error occurred while trying to join the group.*\n\n${e.message}`);
     }
 });

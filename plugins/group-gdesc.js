@@ -18,10 +18,30 @@ async (conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, args, q, reply }) =
         if (!q) return reply("❌ Please provide a new group description.");
 
         await conn.groupUpdateDescription(from, q);
-        reply("✅ Group description has been updated.");
+
+        const box = `┏━━━━━━━━━━━━━━━━━━
+┃ ✅ *Group Description Updated*
+┃ 📌 *New Description:* ${q}
+┃ 👤 *By:* @${m.sender.split('@')[0]}
+┗━━━━━━━━━━━━━━━━━`;
+
+        await conn.sendMessage(from, {
+            text: box,
+            mentions: [m.sender],
+            contextInfo: {
+                forwardingScore: 999,
+                isForwarded: true,
+                mentionedJid: [m.sender],
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: "120363382023564830@newsletter",
+                    newsletterName: "𝗡𝗢𝗩𝗔-𝗫𝗠𝗗",
+                    serverMessageId: 1
+                }
+            }
+        }, { quoted: mek });
+
     } catch (e) {
         console.error("Error updating group description:", e);
         reply("❌ Failed to update the group description. Please try again.");
     }
 });
-
